@@ -1,0 +1,78 @@
+name: Cross-Platform Test Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Display Python version
+      run: python --version
+
+    - name: Display OS
+      run: echo "Running on ${{ matrix.os }}"
+
+    - name: Run tests
+      run: python -m unittest test_member_a -v
+
+    - name: Generate test report
+      run: |
+        python -m unittest test_member_a 2>&1 | tee test_output.txt
+
+    - name: Upload test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: test_output.txt
+        retention-days: 30
+
+  summary:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all test logs
+      uses: actions/download-artifact@v4
+      with:
+        path: test-logs
+        pattern: test-logs-*
+        merge-multiple: true
+
+    - name: Display test results summary
+      run: |
+        echo "## Cross-Platform Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Platform | Python Version | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|----------------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        for log in test-logs/test-logs-*.txt; do
+          if [ -f "$log" ]; then
+            os=$(basename "$log" | sed 's/test-logs-//' | sed 's/.txt//' | sed 's/-py/ Python /')
+            if grep -q "FAILED" "$log"; then
+              status="❌ Failed"
+            elif grep -q "OK" "$log"; then
+              status="✅ Passed"
+            else
+              status="⚠️ Unknown"
+            fi
+            echo "| $os | $status |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
