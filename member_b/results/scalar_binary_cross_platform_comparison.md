@@ -1,0 +1,133 @@
+# 成员 B：标量与二进制边界 marshal 稳定性扩展测试
+
+## 环境列表
+
+- `scalar_binary_darwin_arm64_py3_9_results.json`: macOS-26.5-arm64-arm-64bit; implementation=CPython; marshal_version=4
+- `scalar_binary_linux_aarch64_py3_12_results.json`: Linux-6.12.76-linuxkit-aarch64-with-glibc2.41; implementation=CPython; marshal_version=4
+- `scalar_binary_linux_x86_64_py3_12_results.json`: Linux-6.12.76-linuxkit-x86_64-with-glibc2.41; implementation=CPython; marshal_version=4
+
+## 每个平台同进程稳定性总结
+
+| Platform | Stable cases | Unstable cases | Exception/support-boundary cases |
+| --- | ---: | ---: | ---: |
+| scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6) | 22 | 0 | 3 |
+| scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13) | 22 | 0 | 3 |
+| scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13) | 22 | 0 | 3 |
+
+## 跨平台比较表
+
+### scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6) vs scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13)
+
+| Case | Category | Platform A | Platform B | Same marshal hash | Same exception | Interpretation |
+| --- | --- | --- | --- | --- | --- | --- |
+| ascii_plain | unicode_string | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_255_a | bytes_payload | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_256_a | bytes_payload | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65535_a | bytes_payload | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65536_a | bytes_payload | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_all_byte_values | bytes_payload | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_empty | bytes_payload | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_high_values_with_ascii | bytes_payload | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_single_nul | bytes_payload | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| chinese_text | unicode_string | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| composed_e_acute | unicode_string | 15492ca1a350222b4cdc858c31055ea3c4620468c1b13f3a3a9e0d0ac13e2c1f | b1cc005f647215ca1161d0e53ca179e6d18250f3a2ba7b7e75a653f46664c6a6 | DIFFERENT | SAME | same repr/type=True; Same input representation but Python major/minor differs; likely version-level marshal format difference. |
+| constant_ellipsis | basic_scalar_constant | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_false | basic_scalar_constant | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_none | basic_scalar_constant | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_true | basic_scalar_constant | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| crlf_string | unicode_string | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| decomposed_e_acute | unicode_string | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| emoji_text | unicode_string | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| lone_high_surrogate | unicode_string | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| non_bmp_character | unicode_string | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| nul_inside_string | unicode_string | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| slice_1_10_2 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_neg10_none_neg1 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_none_none_none | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| zero_width_joiner_sequence | unicode_string | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+
+### scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6) vs scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13)
+
+| Case | Category | Platform A | Platform B | Same marshal hash | Same exception | Interpretation |
+| --- | --- | --- | --- | --- | --- | --- |
+| ascii_plain | unicode_string | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_255_a | bytes_payload | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_256_a | bytes_payload | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65535_a | bytes_payload | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65536_a | bytes_payload | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_all_byte_values | bytes_payload | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_empty | bytes_payload | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_high_values_with_ascii | bytes_payload | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_single_nul | bytes_payload | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| chinese_text | unicode_string | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| composed_e_acute | unicode_string | 15492ca1a350222b4cdc858c31055ea3c4620468c1b13f3a3a9e0d0ac13e2c1f | b1cc005f647215ca1161d0e53ca179e6d18250f3a2ba7b7e75a653f46664c6a6 | DIFFERENT | SAME | same repr/type=True; Same input representation but Python major/minor differs; likely version-level marshal format difference. |
+| constant_ellipsis | basic_scalar_constant | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_false | basic_scalar_constant | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_none | basic_scalar_constant | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_true | basic_scalar_constant | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| crlf_string | unicode_string | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| decomposed_e_acute | unicode_string | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| emoji_text | unicode_string | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| lone_high_surrogate | unicode_string | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| non_bmp_character | unicode_string | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| nul_inside_string | unicode_string | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| slice_1_10_2 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_neg10_none_neg1 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_none_none_none | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| zero_width_joiner_sequence | unicode_string | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+
+### scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13) vs scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13)
+
+| Case | Category | Platform A | Platform B | Same marshal hash | Same exception | Interpretation |
+| --- | --- | --- | --- | --- | --- | --- |
+| ascii_plain | unicode_string | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | f27068260acda9a05a6477f17da12f844bca8f00a8ac15381de59fd1add44945 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_255_a | bytes_payload | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | 53390e7c83b4c75d83049232bb1606430a7fe447c1959534e1eab7c75f65b6dc | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_256_a | bytes_payload | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | 53188b6b4075877d9b67ffd558470ab76b9135b37ef9f071691f841bc63bec60 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65535_a | bytes_payload | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | a3b456b781708c127861d71131332ef1fdc21e93c792780e16917a25407bf4b5 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_65536_a | bytes_payload | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | e8ddaf383a5237a587a9c7e2e8d9fa5bd6f2ff8dccc1e1c62b241e836ced21a1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_all_byte_values | bytes_payload | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | 0b08ed82f6c155739862b18db0d9bcd0717c90a3bd87e72a5828d85356b79078 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_empty | bytes_payload | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | 1e39f9576a47375992ed7b53b49a4fe68e1622c87227165ee0246d3c345996f1 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_high_values_with_ascii | bytes_payload | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | 65d38ebb6377ea6768006219e2f287633db9a5b27d7a10162f4d8a6c0cc1201e | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| bytes_single_nul | bytes_payload | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | 1d8dfa4953616cbac6e522dc20eb80543edfae42939bb0cce67761da0aa1f42b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| chinese_text | unicode_string | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | a29b50e9bffe92648b41aa010c2bbece6ddcea2ceb650286af92d0abfa23fbfe | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| composed_e_acute | unicode_string | b1cc005f647215ca1161d0e53ca179e6d18250f3a2ba7b7e75a653f46664c6a6 | b1cc005f647215ca1161d0e53ca179e6d18250f3a2ba7b7e75a653f46664c6a6 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_ellipsis | basic_scalar_constant | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_false | basic_scalar_constant | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | f67ab10ad4e4c53121b6a5fe4da9c10ddee905b978d3788d2723d7bfacbe28a9 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_none | basic_scalar_constant | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | 8ce86a6ae65d3692e7305e2c58ac62eebd97d3d943e093f577da25c36988246b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| constant_true | basic_scalar_constant | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | e632b7095b0bf32c260fa4c539e9fd7b852d0de454e9be26f24d0d6f91d069d3 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| crlf_string | unicode_string | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | cd044dcdd08e23d148ce43d6cb1b39981e6f9a6062e7736065e43fef4aca3a79 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| decomposed_e_acute | unicode_string | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| emoji_text | unicode_string | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | 43c23359ede29349a8d93345379935a8b3a114d6a075bf6777d6f8bcfcc65294 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| lone_high_surrogate | unicode_string | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | ae4998a804b2b8c7174d0e50b89660f8fc823c1447c1cdd3896188c45c7f2d8b | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| non_bmp_character | unicode_string | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | 9dd9b2a755b41e3f92fe755f3a4c5e98da7c839b6bf1acd95a28f6796df0296a | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| nul_inside_string | unicode_string | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | 5ec6c79ca2f5bc765c92d9a7556be945da94aadf576b9c93f2f7b82bda7d3cdf | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+| slice_1_10_2 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_neg10_none_neg1 | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| slice_none_none_none | optional_slice_probe | ValueError | ValueError | DIFFERENT | SAME | same repr/type=True; Same version support boundary or same exception behavior. |
+| zero_width_joiner_sequence | unicode_string | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | 354bbc1161b0d47137293d70e11acd89792325b8a0063562a420f00f84572569 | SAME | SAME | same repr/type=True; Same input and same marshal hash. |
+
+## composed_e_acute 与 decomposed_e_acute 分析
+
+`composed_e_acute` 和 `decomposed_e_acute` 在视觉上相似，但底层 Unicode code points 不同。
+- composed code points: `['U+00E9']`
+- decomposed code points: `['U+0065', 'U+0301']`
+- marshal hash: `15492ca1a350222b4cdc858c31055ea3c4620468c1b13f3a3a9e0d0ac13e2c1f` vs `e6fabd8e68bc312d731d9b6ebbfa2c1016b48467872203eb509e849d4dca332a`; same=False
+- Hash differs because the input Unicode code points differ; this is not a marshal defect.
+
+## bytes length boundary 分析
+
+The bytes cases cover empty payloads, embedded NUL, high byte values, all byte values, and length boundaries at 255/256 and 65535/65536.
+If these cases remain same-process stable and cross-platform hashes match, embedded NUL and high byte values do not break marshal stability for raw bytes payloads.
+
+## slice 支持边界分析
+
+- `scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6)` `slice_none_none_none`: ValueError: unmarshallable object
+- `scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6)` `slice_1_10_2`: ValueError: unmarshallable object
+- `scalar_binary_darwin_arm64_py3_9_results (Darwin/arm64, Python 3.9.6)` `slice_neg10_none_neg1`: ValueError: unmarshallable object
+- `scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13)` `slice_none_none_none`: ValueError: unmarshallable object
+- `scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13)` `slice_1_10_2`: ValueError: unmarshallable object
+- `scalar_binary_linux_aarch64_py3_12_results (Linux/aarch64, Python 3.12.13)` `slice_neg10_none_neg1`: ValueError: unmarshallable object
+- `scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13)` `slice_none_none_none`: ValueError: unmarshallable object
+- `scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13)` `slice_1_10_2`: ValueError: unmarshallable object
+- `scalar_binary_linux_x86_64_py3_12_results (Linux/x86_64, Python 3.12.13)` `slice_neg10_none_neg1`: ValueError: unmarshallable object
+- These exceptions indicate Python version marshal support boundaries and are not treated as test failures.

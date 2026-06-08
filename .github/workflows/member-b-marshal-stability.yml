@@ -1,0 +1,99 @@
+name: Member B marshal stability
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "member_b/**"
+      - ".github/workflows/member-b-marshal-stability.yml"
+  pull_request:
+    paths:
+      - "member_b/**"
+      - ".github/workflows/member-b-marshal-stability.yml"
+
+jobs:
+  member-b-test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show Python environment
+        run: |
+          python --version
+          python -c "import marshal, platform, sys; print(platform.platform()); print(platform.machine()); print(sys.version); print('marshal.version=', marshal.version)"
+
+      - name: Run member B unified tests
+        run: python member_b/test_member_b_all.py
+
+      - name: Run legacy member B suites
+        run: |
+          python member_b/test_marshal_float_complex.py
+          python member_b/test_member_b_scalar_binary_extensions.py
+
+      - name: Upload platform result JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-b-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: member_b/results/*_results.json
+
+  member-b-compare:
+    name: Compare member B results
+    runs-on: ubuntu-latest
+    needs: member-b-test
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download all result artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-member-b-results
+
+      - name: Collect result JSON files
+        run: |
+          mkdir -p member_b/results
+          find downloaded-member-b-results -name "*_results.json" -exec cp {} member_b/results/ \;
+          find member_b/results -maxdepth 1 -name "*_results.json" -print | sort
+
+      - name: Generate comparison reports
+        run: |
+          python member_b/compare_cross_platform.py
+          python member_b/compare_scalar_binary_extensions.py
+          python member_b/compare_member_b_all_results.py
+          python member_b/summarize_member_b_results.py
+
+      - name: Upload comparison reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-b-comparison-reports
+          path: |
+            member_b/results/*.md
+            member_b/results/*_results.json
