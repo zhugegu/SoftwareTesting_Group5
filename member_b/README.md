@@ -5,9 +5,7 @@ for the Python `marshal` stability assignment.
 
 ## Files
 
-- `test_member_b_all.py`: unified entrypoint for all member B required and extension cases.
-- `test_marshal_float_complex.py`: original float/complex deep precision suite.
-- `test_member_b_scalar_binary_extensions.py`: scalar/binary extension suite.
+- `member_b_marshal_tests.py`: the single unified test entrypoint for all member B required and extension cases.
 - `compare_member_b_all_results.py`: unified cross-platform comparison report generator.
 - `compare_cross_platform.py`: original float/complex comparison report generator.
 - `compare_scalar_binary_extensions.py`: scalar/binary comparison report generator.
@@ -18,17 +16,17 @@ for the Python `marshal` stability assignment.
 ## Local run
 
 ```bash
-python member_b/test_member_b_all.py
+python member_b/member_b_marshal_tests.py
 python member_b/compare_member_b_all_results.py
 ```
 
-For the older split suites:
+For report generation:
 
 ```bash
-python member_b/test_marshal_float_complex.py
-python member_b/test_member_b_scalar_binary_extensions.py
 python member_b/compare_cross_platform.py
 python member_b/compare_scalar_binary_extensions.py
+python member_b/compare_member_b_all_results.py
+python member_b/summarize_member_b_results.py
 ```
 
 ## GitHub Actions

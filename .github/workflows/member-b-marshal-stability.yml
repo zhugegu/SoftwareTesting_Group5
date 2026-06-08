@@ -44,12 +44,7 @@ jobs:
           python -c "import marshal, platform, sys; print(platform.platform()); print(platform.machine()); print(sys.version); print('marshal.version=', marshal.version)"
 
       - name: Run member B unified tests
-        run: python member_b/test_member_b_all.py
-
-      - name: Run legacy member B suites
-        run: |
-          python member_b/test_marshal_float_complex.py
-          python member_b/test_member_b_scalar_binary_extensions.py
+        run: python member_b/member_b_marshal_tests.py
 
       - name: Upload platform result JSON
         uses: actions/upload-artifact@v4

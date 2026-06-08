@@ -3,9 +3,7 @@
 set -u
 
 RESULTS_DIR="member_b/results"
-TEST_SCRIPT="member_b/test_marshal_float_complex.py"
-EXTRA_TEST_SCRIPT="member_b/test_member_b_scalar_binary_extensions.py"
-UNIFIED_TEST_SCRIPT="member_b/test_member_b_all.py"
+UNIFIED_TEST_SCRIPT="member_b/member_b_marshal_tests.py"
 COMPARE_SCRIPT="member_b/compare_cross_platform.py"
 EXTRA_COMPARE_SCRIPT="member_b/compare_scalar_binary_extensions.py"
 UNIFIED_COMPARE_SCRIPT="member_b/compare_member_b_all_results.py"
@@ -49,17 +47,13 @@ run_linux_test() {
             -v "$PWD:/work" \
             -w /work \
             "$PYTHON_IMAGE" \
-            sh -c "python '$TEST_SCRIPT' && \
-if [ -f '$EXTRA_TEST_SCRIPT' ]; then python '$EXTRA_TEST_SCRIPT'; fi && \
-if [ -f '$UNIFIED_TEST_SCRIPT' ]; then python '$UNIFIED_TEST_SCRIPT'; fi"
+            sh -c "python '$UNIFIED_TEST_SCRIPT'"
     else
         docker run --rm \
             -v "$PWD:/work" \
             -w /work \
             "$PYTHON_IMAGE" \
-            sh -c "python '$TEST_SCRIPT' && \
-if [ -f '$EXTRA_TEST_SCRIPT' ]; then python '$EXTRA_TEST_SCRIPT'; fi && \
-if [ -f '$UNIFIED_TEST_SCRIPT' ]; then python '$UNIFIED_TEST_SCRIPT'; fi"
+            sh -c "python '$UNIFIED_TEST_SCRIPT'"
     fi
 
     status=$?

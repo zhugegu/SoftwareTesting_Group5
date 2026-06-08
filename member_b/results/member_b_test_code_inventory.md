@@ -4,15 +4,7 @@
 
 ## 统一入口
 
-- `test_member_b_all.py`
-
-## 原始成员 B 测试
-
-- `test_marshal_float_complex.py`
-
-## 扩展测试
-
-- `test_member_b_scalar_binary_extensions.py`
+- `member_b_marshal_tests.py`
 
 ## 比较与分析脚本
 
@@ -29,4 +21,3 @@
 ## 说明文档
 
 - `run_linux_with_docker.md`
-

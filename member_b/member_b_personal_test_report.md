@@ -11,7 +11,7 @@
 
 本报告针对 Python 标准库 `marshal` 模块中成员 B 负责的“浮点数与复数深层精度测试”进行总结，核心目标是验证相同输入对象在重复 `marshal.dumps()` 后是否产生完全一致的字节流哈希，并观察浮点特殊值、复数特殊值和 NaN payload 在跨平台结果中的表现。
 
-当前成员 B 原分工测试已经覆盖 `R1.1`、`R1.2`、`R3.1`、`R3.2`。已有结果显示：float/complex 测试在 macOS、Linux、Windows 结果中，同进程稳定性全部通过，跨平台比较的 marshal 哈希也全部一致。除此之外，我额外扩展了非容器、非代码对象的标量与二进制边界输入测试，包括 Unicode 字符串、bytes 边界、基础标量常量和 slice 支持探测。扩展测试同样未发现同进程不稳定；slice 在当前 Python 版本中不支持 marshal，记录为版本支持边界，不作为缺陷。
+当前成员 B 原分工测试已经覆盖 `R1.1`、`R1.2`、`R3.1`、`R3.2`。最新 GitHub Actions 结果覆盖 Ubuntu、macOS、Windows 三个操作系统，以及 Python 3.9、3.10、3.11、3.12、3.13 五个版本，共 15 个运行环境。每个环境统一执行 48 个 case，其中 45 个支持 marshal 的 case 全部同进程稳定，0 个同进程不稳定；3 个 slice case 记录为版本支持边界，不作为缺陷。除此之外，我额外扩展了非容器、非代码对象的标量与二进制边界输入测试，包括 Unicode 字符串、bytes 边界、基础标量常量和 slice 支持探测。
 
 结论：成员 B 的原分工任务可以判定为已完成；扩展测试增强了对 `marshal` 字节级稳定性的说明，但不与其他成员的整数、容器、递归异常和 code object 分工重复。
 
@@ -49,17 +49,23 @@
 
 ### 3.1 已有结果覆盖
 
-| 结果文件 | 系统 | 架构 | Python 版本 | 测试范围 | 结果概况 |
-|---|---|---|---|---|---|
-| `darwin_arm64_py3_9_results.json` | macOS / Darwin | arm64 | 3.9.6 | float/complex | 23/23 同进程稳定 |
-| `darwin_results.json` | macOS / Darwin | arm64 | 3.9.6 | float/complex | 23/23 同进程稳定 |
-| `linux_aarch64_py3_12_results.json` | Linux | aarch64 | 3.12.13 | float/complex | 23/23 同进程稳定 |
-| `linux_x86_64_py3_12_results.json` | Linux | x86_64 | 3.12.13 | float/complex | 23/23 同进程稳定 |
-| `windows_amd64_py3_12_results.json` | Windows | AMD64 | 3.12.4 | float/complex | 23/23 同进程稳定 |
-| `scalar_binary_darwin_arm64_py3_9_results.json` | macOS / Darwin | arm64 | 3.9.6 | 扩展 scalar/binary | 22 个支持 case 稳定，3 个 slice 支持边界 |
-| `scalar_binary_linux_aarch64_py3_12_results.json` | Linux | aarch64 | 3.12.13 | 扩展 scalar/binary | 22 个支持 case 稳定，3 个 slice 支持边界 |
-| `scalar_binary_linux_x86_64_py3_12_results.json` | Linux | x86_64 | 3.12.13 | 扩展 scalar/binary | 22 个支持 case 稳定，3 个 slice 支持边界 |
-| `member_b_all_darwin_arm64_py3_9_results.json` | macOS / Darwin | arm64 | 3.9.6 | 统一入口全部 case | 45 个支持 case 稳定，3 个 slice 支持边界 |
+| 系统 | 架构 | Python 版本 | 统一结果文件 | 结果概况 |
+|---|---|---|---|---|
+| macOS / Darwin | arm64 | 3.9.6 | `member_b_all_darwin_arm64_py3_9_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| macOS / Darwin | arm64 | 3.10.11 | `member_b_all_darwin_arm64_py3_10_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| macOS / Darwin | arm64 | 3.11.9 | `member_b_all_darwin_arm64_py3_11_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| macOS / Darwin | arm64 | 3.12.10 | `member_b_all_darwin_arm64_py3_12_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| macOS / Darwin | arm64 | 3.13.13 | `member_b_all_darwin_arm64_py3_13_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Linux | x86_64 | 3.9.25 | `member_b_all_linux_x86_64_py3_9_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Linux | x86_64 | 3.10.20 | `member_b_all_linux_x86_64_py3_10_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Linux | x86_64 | 3.11.15 | `member_b_all_linux_x86_64_py3_11_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Linux | x86_64 | 3.12.13 | `member_b_all_linux_x86_64_py3_12_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Linux | x86_64 | 3.13.13 | `member_b_all_linux_x86_64_py3_13_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Windows | AMD64 | 3.9.13 | `member_b_all_windows_amd64_py3_9_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Windows | AMD64 | 3.10.11 | `member_b_all_windows_amd64_py3_10_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Windows | AMD64 | 3.11.9 | `member_b_all_windows_amd64_py3_11_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Windows | AMD64 | 3.12.10 | `member_b_all_windows_amd64_py3_12_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
+| Windows | AMD64 | 3.13.13 | `member_b_all_windows_amd64_py3_13_results.json` | 48 case；45 稳定；0 不稳定；3 个 slice 支持边界 |
 
 ### 3.2 GitHub Actions 多系统多版本计划
 
@@ -72,9 +78,7 @@
 | 运行内容 | 统一测试脚本、原 float/complex 脚本、扩展 scalar/binary 脚本 |
 | 产物 | JSON 结果、跨平台 Markdown 比较报告、单平台摘要报告 |
 
-当前本地目录没有 `.git` 目录，因此无法在本机直接触发 GitHub Actions；将该 workflow 提交到仓库后，可以通过 push、PR 或手动 `workflow_dispatch` 跑完整的三系统多版本矩阵。
-
-本地 Docker 脚本 `run_linux_docker_tests.sh` 也已更新为会运行统一测试入口；但当前机器 Docker daemon 未启动，实际复跑时报错 `failed to connect to the docker API`，日志保存在 `results/member_b_linux_docker_run.log`。因此本报告中统一入口的新结果目前只包含本机 macOS，Linux/Windows 的统一入口结果等待 GitHub Actions 生成。
+该 workflow 已在分支 `member-b-marshal-tests` 上通过 push 触发并成功完成，运行链接为 `https://github.com/zhugegu/SoftwareTesting_Group5/actions/runs/27129174317`。本地 `member_b/results/` 已同步保存该次 GitHub Actions 生成的 JSON 与 Markdown artifacts。
 
 ---
 
@@ -134,25 +138,27 @@
 
 ### 5.1 本地统一入口执行结果
 
-本次新增统一入口 `test_member_b_all.py` 已在本机运行，输出文件为：
+本次统一入口 `member_b_marshal_tests.py` 已在 GitHub Actions 三系统五版本矩阵运行，输出文件保存在 `member_b/results/`。核心汇总文件包括：
 
-- `tests/member_b_float_complex/results/member_b_all_darwin_arm64_py3_9_results.json`
-- `tests/member_b_float_complex/results/member_b_all_local_run.log`
-- `tests/member_b_float_complex/results/member_b_all_cross_platform_comparison.md`
+- `member_b/results/member_b_all_cross_platform_comparison.md`
+- `member_b/results/cross_platform_comparison.md`
+- `member_b/results/scalar_binary_cross_platform_comparison.md`
+- `member_b/results/member_b_all_*_results.json`
 
 执行摘要：
 
 | 指标 | 数值 |
 |---|---:|
-| 总 case 数 | 48 |
-| 支持 marshal 且同进程稳定 case | 45 |
-| 支持 marshal 但同进程不稳定 case | 0 |
-| 异常/支持边界 case | 3 |
+| 运行环境数 | 15 |
+| 每个环境总 case 数 | 48 |
+| 每个环境支持 marshal 且同进程稳定 case | 45 |
+| 每个环境支持 marshal 但同进程不稳定 case | 0 |
+| 每个环境异常/支持边界 case | 3 |
 | repeat_count | 100 |
 
 ### 5.2 原 float/complex 跨平台结果
 
-现有 `cross_platform_comparison.md` 显示：所有已比较的 float/complex marshal 哈希在测试平台之间一致。也就是说，在当前结果集合中，成员 B 原始分工未发现同进程不稳定或跨平台哈希不一致。
+最新 `cross_platform_comparison.md` 显示：所有已比较的 float/complex marshal 哈希在测试平台之间一致。也就是说，在当前三系统五版本结果集合中，成员 B 原始分工未发现同进程不稳定；在相同 Python 版本或可比较场景下也未发现 float/complex 的异常跨平台差异。
 
 ### 5.3 扩展 scalar/binary 结果
 
@@ -166,7 +172,7 @@
 |---|---|---|---|
 | 1 | 当前 Python 对 slice 执行 `marshal.dumps()` 报 `ValueError: unmarshallable object` | 否 | slice 是可选支持探测，记录为 Python 版本支持边界。 |
 | 2 | `composed_e_acute` 与 `decomposed_e_acute` hash 不同 | 否 | 二者底层 Unicode code points 不同。 |
-| 3 | macOS Python 3.9 与 Linux Python 3.12 的 `composed_e_acute` hash 不同 | 暂不作为缺陷 | Python major/minor 不同，可能是 marshal 字符串格式版本差异，需要 GitHub Actions 同版本矩阵进一步确认。 |
+| 3 | 不同 Python 主次版本之间的 `composed_e_acute` hash 可能不同 | 暂不作为缺陷 | 输入底层 code points 相同，但 Python major/minor 不同；报告解释为版本级 marshal 格式差异，不归因于操作系统或架构缺陷。 |
 
 ---
 
@@ -177,13 +183,13 @@
 - 原分工要求的 `R1.1`、`R1.2`、`R3.1`、`R3.2` 均已有测试用例覆盖。
 - float/complex 用例覆盖普通值、极小值、极大值、正负无穷、正负零、NaN、不同 NaN payload、复数中特殊值组合。
 - 每个 case 重复 marshal 100 次，并记录哈希列表、唯一哈希数量、首次 marshal 字节流、bit pattern 等可复核数据。
-- 已有结果包含 macOS、Linux、Windows 三类系统；新增 GitHub Actions workflow 可进一步用同一测试入口在三系统和 Python 3.9-3.13 上统一执行。
+- 已有结果包含 macOS、Linux、Windows 三类系统；GitHub Actions workflow 已用同一测试入口在三系统和 Python 3.9-3.13 上统一执行通过。
 - 扩展测试补充了 Unicode、bytes、基础常量和 slice 支持边界，有助于说明 `marshal` 对非容器、非代码对象标量输入的字节级稳定性。
 
 ### 6.2 局限性
 
-- 当前统一入口 `member_b_all_*` 结果只有本机 macOS 一份；完整三系统多版本统一结果需要提交到 GitHub 后由 Actions 生成。
-- 已有 Windows 结果来自原 float/complex 套件，扩展 scalar/binary 尚未看到 Windows JSON；GitHub Actions workflow 已覆盖该缺口。
+- 本报告已经同步 GitHub Actions 三系统五版本 artifacts，但这些 artifacts 是一次运行结果，不代表穷尽所有硬件、编译选项和 Python 小版本。
+- Windows、Linux、macOS 的 GitHub-hosted runner 环境由 GitHub 提供，不能覆盖所有真实用户机器配置。
 - Python 官方不承诺 `marshal` 跨版本格式稳定，因此跨 Python major/minor 的 hash 差异不应直接判定为缺陷。
 - 本分工刻意不测试整数边界、容器随机顺序、递归/共享引用和 code object，以避免与成员 A、C、D、E 重复。
 
@@ -195,7 +201,7 @@
 
 扩展测试进一步说明：对于非容器、非代码对象的 Unicode、bytes 和基础标量常量，`marshal` 在当前平台同进程内也表现稳定。bytes 中的 embedded NUL、高字节值和长度边界不会破坏稳定性；视觉相似的 Unicode 字符串如果底层 code points 不同，marshal hash 不同是合理结果；slice 不支持 marshal 是版本支持边界，不作为错误。
 
-后续最值得补的一步，是将新增的 `.github/workflows/member-b-marshal-stability.yml` 提交到 GitHub，使用统一入口在 Windows、Linux、macOS 与 Python 3.9-3.13 的矩阵上重新生成完整结果。这样报告中的“已有历史结果”可以升级为“同一 workflow 统一生成的三系统多版本结果”。
+后续如果还要继续增强，可以把 GitHub Actions 的 Markdown 汇总报告进一步自动提交回仓库，或增加 CPython 以外解释器的观察性测试。但对于当前成员 B 分工，已有测试范围和结果已经足够支撑完成结论。
 
 ---
 
@@ -211,9 +217,7 @@
 
 ### A.1 测试代码文件
 
-- `test_member_b_all.py`
-- `test_marshal_float_complex.py`
-- `test_member_b_scalar_binary_extensions.py`
+- `member_b_marshal_tests.py`
 - `compare_cross_platform.py`
 - `compare_scalar_binary_extensions.py`
 - `compare_member_b_all_results.py`
@@ -227,5 +231,4 @@
 - `results/scalar_binary_cross_platform_comparison.md`
 - `results/member_b_all_cross_platform_comparison.md`
 - `results/member_b_all_darwin_arm64_py3_9_results.json`
-- `results/member_b_all_local_run.log`
-- `results/member_b_all_compare_local.log`
+- `results/member_b_all_*_results.json`
