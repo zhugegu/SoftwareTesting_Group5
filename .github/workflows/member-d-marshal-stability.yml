@@ -39,6 +39,10 @@ jobs:
       - name: Show Python version
         run: python --version
 
+      - name: Clean previous member D results
+        run: |
+          python -c "import shutil, pathlib; p=pathlib.Path('member_d/results'); shutil.rmtree(p, ignore_errors=True); p.mkdir(parents=True, exist_ok=True)"
+
       - name: Run member D marshal tests
         run: python member_d/member_d_marshal_tests.py
 
