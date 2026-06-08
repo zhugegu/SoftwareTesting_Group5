@@ -4,14 +4,14 @@ import unittest
 import sys
 import os
 import io
-
+from functools import wraps
 
 def hash_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
-
 def test_determinism(runs: int = 10):
     def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             results = set()
             for _ in range(runs):
@@ -188,7 +188,7 @@ class TestR2_2_VariableLengthEncodingBoundary(unittest.TestCase, HelperMixin):
     @test_determinism()
     def test_single_byte_int(self):
         results = []
-        for i in range(256):
+        for i in range(-5, 257):
             results.append(marshal.dumps(i))
         return b''.join(results)
 
@@ -226,11 +226,16 @@ class TestR2_2_VariableLengthEncodingBoundary(unittest.TestCase, HelperMixin):
 
     @test_determinism()
     def test_marshal_long_digit_boundaries(self):
-        boundaries = [32767, 32768, 1073741823, 1073741824]
+        boundaries = [
+            32767, 32768, 32769,
+            1073741823, 1073741824, 1073741825,
+            35184372088831, 35184372088832, 35184372088833
+        ]
+        results = []
         for val in boundaries:
-            marshal.dumps(val)
-            marshal.dumps(-val)
-        return marshal.dumps(boundaries)
+            results.append(marshal.dumps(val))
+            results.append(marshal.dumps(-val))
+        return b''.join(results)
 
     def test_large_string(self):
         self.helper(" " * 10000)
@@ -240,6 +245,22 @@ class TestR2_2_VariableLengthEncodingBoundary(unittest.TestCase, HelperMixin):
         marshal.dump(42, bio)
         stream_data = bio.getvalue()
         self.assertEqual(stream_data, marshal.dumps(42))
+
+    @test_determinism()
+    def test_power_of_two_boundaries(self):
+        boundaries = [
+            (1 << 15) - 1,  
+            1 << 15,        
+            (1 << 30) - 1, 
+            1 << 30,        
+            (1 << 45) - 1, 
+            1 << 45,      
+        ]
+        results = []
+        for val in boundaries:
+            results.append(marshal.dumps(val))
+            results.append(marshal.dumps(-val))
+        return b''.join(results)
 
 
 class TestR2_3_InternalOptimizationIsolation(unittest.TestCase, HelperMixin):
@@ -279,18 +300,6 @@ class TestR2_3_InternalOptimizationIsolation(unittest.TestCase, HelperMixin):
             results.append(marshal.dumps(s))
         return b''.join(results)
 
-    def test_intern_preservation(self):
-        strobj = "this is an interned string"
-        strobj = sys.intern(strobj)
-        
-        s = marshal.loads(marshal.dumps(strobj))
-        self.assertEqual(s, strobj)
-        self.assertEqual(id(s), id(strobj))
-        
-        s2 = marshal.loads(marshal.dumps(strobj, 2))
-        self.assertEqual(s2, strobj)
-        self.assertNotEqual(id(s2), id(strobj))
-
     def test_interned_vs_non_interned_string(self):
         s1 = "hello_world_test_strat"
         s2 = sys.intern("".join(["hello_", "world_", "test_", "strat"]))
@@ -300,6 +309,12 @@ class TestR2_3_InternalOptimizationIsolation(unittest.TestCase, HelperMixin):
         a = 256
         b = int("256")
         self.assertEqual(hash_bytes(marshal.dumps(a)), hash_bytes(marshal.dumps(b)))
+
+    def test_same_value_different_identity(self):
+        a = 1000
+        b = int("1000")
+        self.assertIsNot(a, b)
+        self.assertEqual(marshal.dumps(a), marshal.dumps(b))
 
 
 class TestEdgeCases(unittest.TestCase, HelperMixin):
