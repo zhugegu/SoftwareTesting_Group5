@@ -1,4 +1,4 @@
-# Member D Marshal Test Summary: `member_d_all_windows_amd64_py3_13_results.json`
+# Member D Marshal Test Summary: `member_d_all_windows_amd64_py3_12_results.json`
 
 ## 1. Environment
 
@@ -8,8 +8,8 @@
 | System | Windows |
 | Machine | AMD64 |
 | Python implementation | CPython |
-| Python version | 3.13 |
-| Full sys.version | 3.13.13 (tags/v3.13.13:01104ce, Apr  7 2026, 19:25:48) [MSC v.1944 64 bit (AMD64)] |
+| Python version | 3.12 |
+| Full sys.version | 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)] |
 | marshal.version | 4 |
 | Recursion limit | 1000 |
 

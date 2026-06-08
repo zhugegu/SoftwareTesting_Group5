@@ -1,15 +1,16 @@
-# Member D Marshal Test Summary: `member_d_all_windows_amd64_py3_13_results.json`
+# Member D Marshal Test Summary: `member_d_all_linux_x86_64_py3_9_results.json`
 
 ## 1. Environment
 
 | Field | Value |
 |---|---|
-| Platform | Windows-2025Server-10.0.26100-SP0 |
-| System | Windows |
-| Machine | AMD64 |
+| Platform | Linux-6.17.0-1015-azure-x86_64-with-glibc2.39 |
+| System | Linux |
+| Machine | x86_64 |
 | Python implementation | CPython |
-| Python version | 3.13 |
-| Full sys.version | 3.13.13 (tags/v3.13.13:01104ce, Apr  7 2026, 19:25:48) [MSC v.1944 64 bit (AMD64)] |
+| Python version | 3.9 |
+| Full sys.version | 3.9.25 (main, Nov  3 2025, 15:16:36) 
+[GCC 13.3.0] |
 | marshal.version | 4 |
 | Recursion limit | 1000 |
 
@@ -19,9 +20,9 @@
 |---|---:|
 | Top-level case count | 18 |
 | Flattened case count | 31 |
-| Stable count | 23 |
+| Stable count | 25 |
 | Unstable count | 0 |
-| Exception count | 8 |
+| Exception count | 6 |
 | Repeat count | 100 |
 
 ## 3. Flattened Case Results
@@ -35,12 +36,12 @@
 | TC-D04-depth-100 | - | dumps | R5.2 | PASS | 1 | - | True | 19544ac41bf4... |
 | TC-D04-depth-500 | - | dumps | R5.2 | PASS | 1 | - | True | ac450374ff61... |
 | TC-D04-depth-900 | - | dumps | R5.2 | PASS | 1 | - | True | 65832f5ae5a6... |
-| TC-D04-depth-1000 | - | dumps | R5.2 | EXPECTED_EXCEPTION | 0 | ValueError | - | - |
+| TC-D04-depth-1000 | - | dumps | R5.2 | PASS | 1 | - | True | 6525e29210e0... |
 | TC-D05-depth-10 | - | dumps | R5.2 | PASS | 1 | - | True | 3268a7dc67f7... |
 | TC-D05-depth-100 | - | dumps | R5.2 | PASS | 1 | - | True | 7fd38dad3e0f... |
 | TC-D05-depth-500 | - | dumps | R5.2 | PASS | 1 | - | True | 8de6f99a65bb... |
 | TC-D05-depth-900 | - | dumps | R5.2 | PASS | 1 | - | True | 6eda7495d5cb... |
-| TC-D05-depth-1000 | - | dumps | R5.2 | EXPECTED_EXCEPTION | 0 | ValueError | - | - |
+| TC-D05-depth-1000 | - | dumps | R5.2 | PASS | 1 | - | True | 0c1b6a0bfd86... |
 | TC-D06-object_instance | TC-D06 | dumps | R5.3 | EXPECTED_EXCEPTION | 0 | ValueError | - | - |
 | TC-D06-custom_class_instance | TC-D06 | dumps | R5.3 | EXPECTED_EXCEPTION | 0 | ValueError | - | - |
 | TC-D06-normal_function | TC-D06 | dumps | R5.3 | EXPECTED_EXCEPTION | 0 | ValueError | - | - |
@@ -75,8 +76,6 @@
 
 | Case ID | Exception Type | Exception Message | Interpretation |
 |---|---|---|---|
-| TC-D04-depth-1000 | ValueError | object too deeply nested to marshal | Expected rejection for unsupported or invalid input; not treated as a stability bug. |
-| TC-D05-depth-1000 | ValueError | object too deeply nested to marshal | Expected rejection for unsupported or invalid input; not treated as a stability bug. |
 | TC-D06-object_instance | ValueError | unmarshallable object | Expected rejection for unsupported or invalid input; not treated as a stability bug. |
 | TC-D06-custom_class_instance | ValueError | unmarshallable object | Expected rejection for unsupported or invalid input; not treated as a stability bug. |
 | TC-D06-normal_function | ValueError | unmarshallable object | Expected rejection for unsupported or invalid input; not treated as a stability bug. |
@@ -86,4 +85,4 @@
 
 ## 6. Preliminary Conclusion
 
-In this environment, 23 flattened cases showed stable behavior and no non-deterministic marshal output was observed. The 8 exception cases were expected rejection or invalid-byte-stream cases and should not be treated as marshal bugs.
+In this environment, 25 flattened cases showed stable behavior and no non-deterministic marshal output was observed. The 6 exception cases were expected rejection or invalid-byte-stream cases and should not be treated as marshal bugs.
