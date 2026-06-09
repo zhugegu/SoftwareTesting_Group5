@@ -1,8 +1,10 @@
-# -*- coding: utf-8 -*-
-# 代码对象测试 + 跨平台/跨版本一致性测试
-# 测试范围：R1.2、R6.1、R6.2、R6.3、R6.4、R6.5、R6.6
-# 自动适配 Windows/Ubuntu/macOS三个系统
-# 成员E：何安绮
+"""Member E marshal stability tests.
+
+This script tests marshal stability and correctness for code objects,
+cross-platform/cross-version consistency, and optimization levels.
+It covers requirements: R1.2, R6.1, R6.2, R6.3, R6.4, R6.5, R6.6.
+Auto-adapted for Windows/Ubuntu/macOS.
+"""
 
 import marshal
 import sys
@@ -12,10 +14,10 @@ import hashlib
 import types
 
 def get_hash(data: bytes) -> str:
-    """计算哈希值，用于比对序列化字节是否一致"""
+    """Calculate hash value for comparing serialized bytes consistency"""
     return hashlib.sha256(data).hexdigest()
 
-# ===================== 自动识别系统，自动设置日志路径 =====================
+# ===================== Auto-detect system and set log path =====================
 if platform.system() == "Windows":
     LOG_DIR = r"D:\RJTest\marshalTest"
 else:
@@ -28,12 +30,12 @@ os_name = platform.system().lower()
 log_filename = f"marshal_e_{os_name}_{py_ver}.log"
 log_path = os.path.join(LOG_DIR, log_filename)
 
-# ===================== 统一输出函数 =====================
+# ===================== Unified output function =====================
 def log(msg, file_handle):
     print(msg)
     file_handle.write(msg + "\n")
 
-# ===================== R1.2 测试用例：常规对象跨平台一致性 =====================
+# ===================== R1.2 Test Case: Cross-platform consistency for normal objects =====================
 def test_r12_basic_cross_platform(file_handle):
     log("\n=== TEST R1.2: CROSS-PLATFORM CONSISTENCY (NORMAL OBJECTS) ===", file_handle)
     test_items = [
@@ -58,7 +60,7 @@ def test_r12_basic_cross_platform(file_handle):
             log(f"R12-Case{idx+1:02d} | FAIL | {repr(e)}", file_handle)
     log(f"R1.2 Summary: {pass_cnt}/{len(test_items)} PASS", file_handle)
 
-# ===================== R6.1 测试用例：编译优化 optimize=0/1/2 正确版本 =====================
+# ===================== R6.1 Test Case: Code object with optimize=0/1/2 =====================
 def test_r61_code_optimize_level(file_handle):
     log("\n=== TEST R6.1: CODE OBJECT UNDER optimize=0/1/2 ===", file_handle)
     src = """
@@ -67,7 +69,7 @@ def test_func(x=10):
 """
     hash_results = {}
 
-    # 正确写法：直接使用 compile 的 optimize 参数
+    # Correct approach: Use compile's optimize parameter directly
     for opt_level, name in [(0, ""), (1, "-O"), (2, "-OO")]:
         code = compile(src, "<r61>", "exec", optimize=opt_level)
         byte_data = marshal.dumps(code)
@@ -80,7 +82,7 @@ def test_func(x=10):
     else:
         log("R6.1 Result: DIFFERENT across optimization levels", file_handle)
 
-# ===================== R6.2 测试用例：多次编译，code序列化稳定性 =====================
+# ===================== R6.2 Test Case: Code serialization stability across repeated compiles =====================
 def test_r62_repeat_compile(file_handle):
     log("\n=== TEST R6.2: REPEATED COMPILE STABILITY ===", file_handle)
     src = "a = 1 + 2"
@@ -98,7 +100,7 @@ def test_r62_repeat_compile(file_handle):
     else:
         log("R6.2 Result: UNSTABLE", file_handle)
 
-# ===================== R6.3 测试用例：跨Python版本code序列化格式 =====================
+# ===================== R6.3 Test Case: Cross-Python-version code serialization format =====================
 def test_r63_cross_version_format(file_handle):
     log("\n=== TEST R6.3: CROSS-PYTHON-VERSION FORMAT RECORD ===", file_handle)
     src = """
@@ -113,7 +115,7 @@ def demo():
     log(f"R6.3 Length of bytes: {len(data)}", file_handle)
     log("R6.3 Result: Format recorded for cross-version comparison", file_handle)
 
-# ===================== 【 E组缺陷用例 1】闭包函数代码对象稳定性测试=====================
+# ===================== [Group E Bug Case 1] Closure function code object stability =====================
 def test_r64_closure_code_stability(file_handle):
     log("\n=== TEST R6.4: CLOSURE CODE OBJECT (MULTIPLE COMPILE) ===", file_handle)
     src = """
@@ -135,7 +137,7 @@ def outer(x):
     else:
         log("R6.4 Result: STABLE", file_handle)
 
-# ===================== 【 E组缺陷用例 2】类+异常代码优化等级测试=====================
+# ===================== [Group E Bug Case 2] Class + exception code optimization level =====================
 def test_r65_class_exception_optimize(file_handle):
     log("\n=== TEST R6.5: CLASS + EXCEPTION CODE OPTIMIZE ===", file_handle)
     src = """
@@ -158,11 +160,11 @@ class TestClass:
     else:
         log("R6.5 Result: STABLE", file_handle)
 
-# ===================== 【 E组缺陷用例 3】异步函数 + NaN嵌入代码对象（跨平台必不一致） =====================
+# ===================== [Group E Bug Case 3] Async function + NaN embedded code object =====================
 def test_r66_async_nan_code(file_handle):
     log("\n=== TEST R6.6: ASYNC + NAN CONSTANT CODE OBJECT ===", file_handle)
     
-    # 异步函数多次编译测试
+    # Async function repeated compile test
     src_async = "async def async_func(): await 1"
     async_hashes = []
     for _ in range(30):
@@ -172,7 +174,7 @@ def test_r66_async_nan_code(file_handle):
     if len(set(async_hashes)) != 1:
         log("R6.6: BUG -> async code object is UNSTABLE on repeat compile", file_handle)
     
-    # 直接编译带 NaN 的代码，不手动构造，兼容所有Python版本
+    # Compile code with NaN directly, compatible with all Python versions
     try:
         src_nan = "a = float('nan')"
         code_nan = compile(src_nan, "<nan_code>", "exec")
@@ -183,7 +185,7 @@ def test_r66_async_nan_code(file_handle):
     except:
         log("R6.6: NaN code test skipped (safe for all Python versions)", file_handle)
 
-# ===================== 主函数：执行所有测试 =====================
+# ===================== Main function: Run all tests =====================
 if __name__ == "__main__":
     with open(log_path, "w", encoding="utf-8") as f:
         log("====== MEMBER E - MARSHAL TEST REPORT ======", f)
@@ -191,13 +193,12 @@ if __name__ == "__main__":
         log(f"Python Version: {py_ver}", f)
         log(f"Log Path: {log_path}", f)
 
-        # 原有基础用例
+        # Original basic test cases
         test_r12_basic_cross_platform(f)
         test_r61_code_optimize_level(f)
         test_r62_repeat_compile(f)
         test_r63_cross_version_format(f)
 
-        # ========== 新增3个会出BUG的测试用例 ==========
         test_r64_closure_code_stability(f)
         test_r65_class_exception_optimize(f)
         test_r66_async_nan_code(f)
