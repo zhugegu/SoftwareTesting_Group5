@@ -1,210 +1,248 @@
 """Member E marshal stability tests.
 
-This script tests marshal stability and correctness for code objects,
-cross-platform/cross-version consistency, and optimization levels.
-It covers requirements: R1.2, R6.1, R6.2, R6.3, R6.4, R6.5, R6.6.
-Auto-adapted for Windows/Ubuntu/macOS.
-"""
+This test suite evaluates the stability, determinism, and format boundaries 
+of Python code object serialization using the standard marshal module.
 
+Complies with requirements: R1.2, R6.1, R6.2, R6.3, R6.4, R6.5, R6.6.
+Integrated into the standard unittest framework with robust I/O error handling,
+dynamic assertions, and safe teardown mechanics for CI/CD integration.
+"""
 import marshal
 import sys
 import os
 import platform
 import hashlib
-import types
+import math
+import unittest
+import atexit
+from datetime import datetime
+from typing import Any, Callable, Set
 
-def get_hash(data: bytes) -> str:
-    """Calculate hash value for comparing serialized bytes consistency"""
-    return hashlib.sha256(data).hexdigest()
 
-# ===================== Auto-detect system and set log path =====================
-if platform.system() == "Windows":
-    LOG_DIR = r"D:\RJTest\marshalTest"
-else:
-    LOG_DIR = os.path.expanduser("~/RJTest/marshalTest")
+REPEAT_COMPILE_COUNT = 20
+ASYNC_COMPILE_COUNT = 30
+STABILITY_CHECK_COUNT = 10
+HASH_DISPLAY_LEN = 16
 
-os.makedirs(LOG_DIR, exist_ok=True)
+def get_marshal_hash(obj: Any) -> str:
+    """Serialize object using marshal and return its SHA-256 hex digest."""
+    return hashlib.sha256(marshal.dumps(obj)).hexdigest()
 
-py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-os_name = platform.system().lower()
-log_filename = f"marshal_e_{os_name}_{py_ver}.log"
-log_path = os.path.join(LOG_DIR, log_filename)
+def datetime_str() -> str:
+    """Return local execution timestamp."""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# ===================== Unified output function =====================
-def log(msg, file_handle):
-    print(msg)
-    file_handle.write(msg + "\n")
+class TestMarshalCodeObjects(unittest.TestCase):
+    log_file = None
 
-# ===================== R1.2 Test Case: Cross-platform consistency for normal objects =====================
-def test_r12_basic_cross_platform(file_handle):
-    log("\n=== TEST R1.2: CROSS-PLATFORM CONSISTENCY (NORMAL OBJECTS) ===", file_handle)
-    test_items = [
-        10086,
-        "member_e_test",
-        [1, 2, 3],
-        {"k": "v"},
-        (9, 8, 7),
-        None,
-        True
-    ]
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Initialize global system parameters and safe logging descriptors."""
+        cls.os_name = platform.system()
+        cls.py_version = sys.version.split()[0]
+        cls.machine = platform.machine()
 
-    pass_cnt = 0
-    for idx, item in enumerate(test_items):
+        cls.log_dir = os.path.dirname(os.path.abspath(__file__))
+        # 日志名：系统名_版本号，示例 member_e_stability_Windows_3.9.12.log
+        log_filename = f"member_e_stability_{cls.os_name}_{cls.py_version}.log"
+        cls.log_path = os.path.join(cls.log_dir, log_filename)
+
         try:
-            data = marshal.dumps(item)
-            restored = marshal.loads(data)
-            h = get_hash(data)
-            log(f"R12-Case{idx+1:02d} | PASS | Hash: {h[:16]}... | Value: {item}", file_handle)
-            pass_cnt += 1
-        except Exception as e:
-            log(f"R12-Case{idx+1:02d} | FAIL | {repr(e)}", file_handle)
-    log(f"R1.2 Summary: {pass_cnt}/{len(test_items)} PASS", file_handle)
+            os.makedirs(cls.log_dir, exist_ok=True)
+            cls.log_file = open(cls.log_path, "a", encoding="utf-8")
+            atexit.register(cls._safe_close_log)
+        except PermissionError as e:
+            raise RuntimeError(f"Permission denied: Cannot create log file at {cls.log_path}") from e
+        except OSError as e:
+            raise RuntimeError(f"OS error when initializing log directory: {e}") from e
 
-# ===================== R6.1 Test Case: Code object with optimize=0/1/2 =====================
-def test_r61_code_optimize_level(file_handle):
-    log("\n=== TEST R6.1: CODE OBJECT UNDER optimize=0/1/2 ===", file_handle)
-    src = """
-def test_func(x=10):
-    return x + 1
-"""
-    hash_results = {}
+        cls._log_raw("=" * 80)
+        cls._log_raw(f"MEMBER E - MARSHAL STABILITY TEST RUN | {datetime_str()}")
+        cls._log_raw(f"OS: {cls.os_name} | Arch: {cls.machine} | Python: {cls.py_version}")
+        cls._log_raw("=" * 80)
 
-    # Correct approach: Use compile's optimize parameter directly
-    for opt_level, name in [(0, ""), (1, "-O"), (2, "-OO")]:
-        code = compile(src, "<r61>", "exec", optimize=opt_level)
-        byte_data = marshal.dumps(code)
-        h = get_hash(byte_data)
-        hash_results[name] = h
-        log(f"R6.1 Opt[{name:4s}] | Hash: {h}", file_handle)
 
-    if len(set(hash_results.values())) == 1:
-        log("R6.1 Result: Stable across optimization levels", file_handle)
-    else:
-        log("R6.1 Result: DIFFERENT across optimization levels", file_handle)
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """Safely release file stream handlers upon suite completion."""
+        cls._log_raw(f"\n[ SUITE EXECUTION COMPLETED AT {datetime_str()} ]\n" + "=" * 80)
+        cls._safe_close_log()
 
-# ===================== R6.2 Test Case: Code serialization stability across repeated compiles =====================
-def test_r62_repeat_compile(file_handle):
-    log("\n=== TEST R6.2: REPEATED COMPILE STABILITY ===", file_handle)
-    src = "a = 1 + 2"
-    hashes = []
+    @classmethod
+    def _safe_close_log(cls) -> None:
+        """Fallback cleanup trigger for I/O buffers."""
+        if cls.log_file is not None and not cls.log_file.closed:
+            cls.log_file.close()
 
-    for i in range(20):
-        code = compile(src, "<r62>", "exec")
-        h = get_hash(marshal.dumps(code))
-        hashes.append(h)
+    @classmethod
+    def _log_raw(cls, msg: str) -> None:
+        """Internal helper to write to both stdout and telemetry log files safely."""
+        print(msg)
+        if cls.log_file is not None and not cls.log_file.closed:
+            try:
+                cls.log_file.write(msg + "\n")
+                cls.log_file.flush()
+            except IOError as e:
+                print(f"[Warning] Log write failed: {e}")
 
-    unique = len(set(hashes))
-    log(f"R6.2: Compile 20 times | Unique hashes: {unique}", file_handle)
-    if unique == 1:
-        log("R6.2 Result: STABLE (no address/random impact)", file_handle)
-    else:
-        log("R6.2 Result: UNSTABLE", file_handle)
+    def _assert_determinism(self, obj_provider: Callable[[], object], 
+                             case_name: str, runs: int = STABILITY_CHECK_COUNT) -> str:
+        """Refactored strict bound verification to eliminate redundant loops."""
+        hashes: Set[str] = set()
+        for _ in range(runs):
+            hashes.add(get_marshal_hash(obj_provider()))
 
-# ===================== R6.3 Test Case: Cross-Python-version code serialization format =====================
-def test_r63_cross_version_format(file_handle):
-    log("\n=== TEST R6.3: CROSS-PYTHON-VERSION FORMAT RECORD ===", file_handle)
-    src = """
-def demo():
-    x = 10
-    return x
-"""
-    code = compile(src, "<r63>", "exec")
-    data = marshal.dumps(code)
-    h = get_hash(data)
-    log(f"R6.3 Python {py_ver} | Code hash: {h}", file_handle)
-    log(f"R6.3 Length of bytes: {len(data)}", file_handle)
-    log("R6.3 Result: Format recorded for cross-version comparison", file_handle)
+        self.assertEqual(len(hashes), 1, f"Non-deterministic payload generated in {case_name}!")
+        stable_hash = list(hashes)[0]
+        self._log_raw(f"[{case_name}] Determinism Verified. Hash = {stable_hash[:HASH_DISPLAY_LEN]}...")
+        return stable_hash
 
-# ===================== [Group E Bug Case 1] Closure function code object stability =====================
-def test_r64_closure_code_stability(file_handle):
-    log("\n=== TEST R6.4: CLOSURE CODE OBJECT (MULTIPLE COMPILE) ===", file_handle)
-    src = """
-def outer(x):
-    def inner():
-        return x + 1
-    return inner
-"""
-    hash_list = []
-    for i in range(20):
-        code = compile(src, "<closure_test>", "exec")
-        current_hash = get_hash(marshal.dumps(code))
-        hash_list.append(current_hash)
-    
-    unique_count = len(set(hash_list))
-    log(f"R6.4: Compile closure 20 times | Unique hashes: {unique_count}", file_handle)
-    if unique_count != 1:
-        log("R6.4: BUG -> closure code object serialization is UNSTABLE", file_handle)
-    else:
-        log("R6.4 Result: STABLE", file_handle)
+    def test_r12_basic_cross_platform(self) -> None:
+        """R1.2: Determinism check for canonical scalar invariants."""
+        self._log_raw("\n[ RUNNING: test_r12_basic_cross_platform ]")
+        test_scalars = [
+            None, True, False, 123456, -9876543210123456789,
+            3.141592653589793, "Hello ZJUT Software Engineering",
+            b"Binary Payload Buffer", (1, 2, "mixed", (3, 4))
+        ]
+        for idx, obj in enumerate(test_scalars):
+            self._assert_determinism(lambda o=obj: o, f"Scalar_Type_{type(obj).__name__}_{idx}")
 
-# ===================== [Group E Bug Case 2] Class + exception code optimization level =====================
-def test_r65_class_exception_optimize(file_handle):
-    log("\n=== TEST R6.5: CLASS + EXCEPTION CODE OPTIMIZE ===", file_handle)
-    src = """
-class TestClass:
-    def compute(self):
-        try:
-            1 / 0
-        except ZeroDivisionError:
-            return None
-"""
-    opt_hashes = {}
-    for opt, tag in [(0, ""), (1, "-O"), (2, "-OO")]:
-        code = compile(src, "<class_exc>", "exec", optimize=opt)
-        h = get_hash(marshal.dumps(code))
-        opt_hashes[tag] = h
-        log(f"R6.5 Opt[{tag:4s}] | Hash: {h}", file_handle)
-    
-    if len(set(opt_hashes.values())) != 1:
-        log("R6.5: BUG -> optimization changes serialization", file_handle)
-    else:
-        log("R6.5 Result: STABLE", file_handle)
+    def test_r61_code_optimize_level(self) -> None:
+        """R6.1: Dynamic validation of bytecode optimization payload stripping (-O/-OO)."""
+        self._log_raw("\n[ RUNNING: test_r61_code_optimize_level ]")
+        src = (
+            'def compute_square(x):\n'
+            '    """Docstring payload to be evaluated."""\n'
+            '    assert x >= 0\n'
+            '    return x * x\n'
+        )
 
-# ===================== [Group E Bug Case 3] Async function + NaN embedded code object =====================
-def test_r66_async_nan_code(file_handle):
-    log("\n=== TEST R6.6: ASYNC + NAN CONSTANT CODE OBJECT ===", file_handle)
-    
-    # Async function repeated compile test
-    src_async = "async def async_func(): await 1"
-    async_hashes = []
-    for _ in range(30):
-        c = compile(src_async, "<async_test>", "exec")
-        async_hashes.append(get_hash(marshal.dumps(c)))
-    
-    if len(set(async_hashes)) != 1:
-        log("R6.6: BUG -> async code object is UNSTABLE on repeat compile", file_handle)
-    
-    # Compile code with NaN directly, compatible with all Python versions
-    try:
-        src_nan = "a = float('nan')"
-        code_nan = compile(src_nan, "<nan_code>", "exec")
-        data = marshal.dumps(code_nan)
-        nan_hash = get_hash(data)
-        log(f"R6.6 Code with NaN | Hash: {nan_hash}", file_handle)
-        log("R6.6: BUG -> code with NaN is unstable cross-platform", file_handle)
-    except:
-        log("R6.6: NaN code test skipped (safe for all Python versions)", file_handle)
+        hashes = {}
+        for level in [0, 1, 2]:
+            code_obj = compile(src, "<optimize_test>", "exec", optimize=level)
+            hashes[level] = get_marshal_hash(code_obj)
+            self._log_raw(f"Optimization Level {level}: Hash = {hashes[level][:HASH_DISPLAY_LEN]}...")
 
-# ===================== Main function: Run all tests =====================
+        self.assertNotEqual(hashes[0], hashes[2],
+                            "Optimization Level 2 failed to strip docstring payload structures.")
+        self._log_raw("Analysis: Optimization levels properly mutated bytecode structures.")
+
+    def test_r62_repeat_compile(self) -> None:
+        """R6.2: Ensure reproducibility of repeated compilation and evaluate dynamic filename injections."""
+        self._log_raw("\n[ RUNNING: test_r62_repeat_compile ]")
+        src = "def process_data(items):\n    return [x**2 for x in items if x % 2 == 0]\n"
+
+        name1 = "<file_name_001>"
+        name2 = "<file_name_002>"
+        code1 = compile(src, name1, "exec")
+        code2 = compile(src, name2, "exec")
+        hash1 = get_marshal_hash(code1)
+        hash2 = get_marshal_hash(code2)
+
+        self.assertNotEqual(hash1, hash2,
+                            "Different filenames produce identical marshal output (unexpected)!")
+        self._log_raw("Observed Behavior: Filename parameters are embedded into code object structures.")
+
+        self._assert_determinism(lambda: compile(src, "<fixed_identity>", "exec"),
+                                 "Fixed_Filename_Compilation", REPEAT_COMPILE_COUNT)
+
+    def test_r63_cross_version_format(self) -> None:
+        """R6.3: Capture runtime interpreter magic tracking layout structures & invalid bytes test."""
+        self._log_raw("\n[ RUNNING: test_r63_cross_version_format ]")
+        src = "x = [1, 2, 3]"
+        code_obj = compile(src, "<version_test>", "exec")
+        raw_bytes = marshal.dumps(code_obj)
+        self._log_raw(f"Format Bound Descriptor Size: {len(raw_bytes)} bytes | Hex Signature = {raw_bytes[:16].hex()}")
+
+        truncated = raw_bytes[:-5]
+        with self.assertRaises((EOFError, ValueError)):
+            marshal.loads(truncated)
+        self._log_raw("Cross-check: Truncated marshal bytes raise expected exception.")
+
+    def test_r63_marshal_version_matrix(self) -> None:
+        """R6.3 Refactored: Evaluate down-version compatibility boundaries handling precise exceptions."""
+        self._log_raw("\n[ RUNNING: test_r63_marshal_version_matrix ]")
+        src = "def identity(x): return x"
+        code_obj = compile(src, "<version_matrix_test>", "exec")
+        max_test_version = min(marshal.version, 4)
+
+        for version in range(max_test_version + 1):
+            try:
+                payload = marshal.dumps(code_obj, version)
+                h_val = hashlib.sha256(payload).hexdigest()
+                self._log_raw(f"Version Param {version}: Stream Size = {len(payload)} bytes | Hash = {h_val[:HASH_DISPLAY_LEN]}...")
+            except (ValueError, DeprecationWarning):
+                self._log_raw(f"Version Param {version}: Expected backward incompatibility boundary hit.")
+            except Exception as e:
+                self.fail(f"Unexpected system crash encountered at version parameter {version}: {e}")
+
+    def test_r64_closure_code_stability(self) -> None:
+        """R6.4: Validate multi-tiered cell and free variable graph traversal paths in marshal.c."""
+        self._log_raw("\n[ RUNNING: test_r64_closure_code_stability ]")
+        src = (
+            "def outer(f):\n"
+            "    def middle(o):\n"
+            "        def inner(v): return v * f + o\n"
+            "        return inner\n"
+            "    return middle\n"
+        )
+        self._assert_determinism(lambda: compile(src, "<closure_test>", "exec"), "Multi_Tiered_Closure")
+
+    def test_r65_class_exception_optimize(self) -> None:
+        """R6.5: Evaluate serialization persistence over compound AST class declarations and exception blocks under different optimization levels."""
+        self._log_raw("\n[ RUNNING: test_r65_class_exception_optimize ]")
+        src = (
+            "class E(Exception): pass\n"
+            "class P:\n"
+            "    def run(self, v):\n"
+            "        try:\n"
+            "            if v < 0: raise E()\n"
+            "        except E: return 0\n"
+        )
+
+        for opt_level in [0, 1, 2]:
+            self._assert_determinism(
+                lambda: compile(src, "<class_exception_test>", "exec", optimize=opt_level),
+                f"Compound_AST_Opt_Level_{opt_level}"
+            )
+
+    def test_r66_async_nan_code(self) -> None:
+        """R6.6 Refactored: Robust boundary evaluation for floating-point permutations inside constant tables."""
+        self._log_raw("\n[ RUNNING: test_r66_async_nan_code ]")
+        async_src = "async def minimal_async_task():\n    await None\n    return True\n"
+        self._assert_determinism(lambda: compile(async_src, "<async_code_test>", "exec"),
+                                 "Async_Coroutine_Block", ASYNC_COMPILE_COUNT)
+
+        special_src = (
+            "def specials():\n"
+            "    return (1e300*1e300/1e300*0.0, 1e300*1e300, -1e300*1e300, 0.0, -0.0)\n"
+        )
+        code_with_specials = compile(special_src, "<special_constants_test>", "exec")
+
+        inner_co = None
+        for c in code_with_specials.co_consts:
+            if isinstance(c, type(code_with_specials)):
+                inner_co = c
+                break
+        self.assertIsNotNone(inner_co, "Constants buffer structure anomaly: Inner code object missing.")
+
+        consts = [c for c in inner_co.co_consts if isinstance(c, float)]
+        has_nan = any(math.isnan(c) for c in consts)
+        has_inf = any(math.isinf(c) for c in consts)
+        has_neg_zero = any(c == -0.0 and math.copysign(1, c) == -1 for c in consts)
+
+        self._log_raw(f"White-box Constants Table Diagnostics: NaN={has_nan} | Inf={has_inf} | -0.0={has_neg_zero}")
+        self._assert_determinism(lambda: code_with_specials, "Special_Floats_Constants_Pool")
+
+    def test_r6_boundary_empty_recursive_code(self) -> None:
+        """Extension Boundary: Empty code & recursive function code object stability."""
+        self._log_raw("\n[ RUNNING: test_r6_boundary_empty_recursive_code ]")
+        # Empty code
+        self._assert_determinism(lambda: compile("", "<empty_stub>", "exec"), "Empty_Code_Object")
+        # Recursive function
+        recursive_src = "def recurse(n):\n    if n <= 1: return 1\n    return n * recurse(n - 1)\n"
+        self._assert_determinism(lambda: compile(recursive_src, "<recursive_stub>", "exec"), "Recursive_Code_Object")
+
 if __name__ == "__main__":
-    with open(log_path, "w", encoding="utf-8") as f:
-        log("====== MEMBER E - MARSHAL TEST REPORT ======", f)
-        log(f"OS: {platform.system()}", f)
-        log(f"Python Version: {py_ver}", f)
-        log(f"Log Path: {log_path}", f)
-
-        # Original basic test cases
-        test_r12_basic_cross_platform(f)
-        test_r61_code_optimize_level(f)
-        test_r62_repeat_compile(f)
-        test_r63_cross_version_format(f)
-
-        test_r64_closure_code_stability(f)
-        test_r65_class_exception_optimize(f)
-        test_r66_async_nan_code(f)
-
-        log("\n[ ALL TESTS FOR E FINISHED ]", f)
-        log("=" * 60, f)
-
-    print(f"\n✅ Member E test completed!")
-    print(f"📄 Log saved: {log_path}")
+    unittest.main(verbosity=2)
